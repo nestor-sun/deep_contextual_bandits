@@ -13,7 +13,7 @@ import numpy as np
 #
 # You can iterate using a bandit algorithm as follows:
 #
-# for arms, rewards in load_bandits("my_bandits.npz"):
+# for arms, rewards in load_bandits("mnist_bandits.npz"):
 #     # Run a trial
 #     for round_arms, round_rewards in zip(arms, rewards):
 #         # Pick an arm for a round and sample the reward. round_arms has shape
@@ -22,8 +22,6 @@ import numpy as np
 #         arm_idx = 7
 #         # Get arm reward
 #         sampled_reward = round_rewards[arm_idx]
-#         break
-#     break
 #
 # arms has shape [n_rounds, n_arms, 28, 28]
 # rewards has shape [n_rounds, n_arms]
@@ -39,8 +37,7 @@ def load_bandits(filename):
         arms = x_train[image_indeces[i, :, :].squeeze(), :, :]
         arm_rewards = rewards[i, :, :].squeeze()
         yield arms, arm_rewards
-        
-        
+
 # Generate a bandit instance and save to specified folder. Arguments:
 # folder: path to save file
 # n_trials: Number of bandit instances to simulate
@@ -51,7 +48,7 @@ def load_bandits(filename):
 # replacement: Use replacement (per round)? If false, will take much longer to
 #               generate
 def generate_bandits(filename, n_trials=500, n_rounds=10000, n_arms=10,
-                    bernoulli_pos=0.25, bernoulli_neg=0.75, w_replacement=True):
+                    bernoulli_pos=0.75, bernoulli_neg=0.25, w_replacement=True):
     # Generate random bandits
     x_train, y_train = load_data()
     labels = range(10)
