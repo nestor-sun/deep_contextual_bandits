@@ -1,4 +1,4 @@
-import DeepFPL
+from DeepFPL import DeepFPL
 import data_utils
 
 import matplotlib.pyplot as plt
@@ -41,24 +41,26 @@ def compare_algs(n_episodes, n_iterations, alg_list, output_folder):
                       if key not in ["label", "class"]}
         mab_alg = run_mab_alg(n_episodes, n_iterations, alg["class"],
                               **alg_params)
-        regret[idx, :], std[idx, :] = extract_regret(mab_alg)
+        regret[idx, :], stds[idx, :] = extract_regret(mab_alg)
 
     # Plot regret        
     fig, ax = plt.subplots()
     t_range = range(n_iterations)
     for idx, alg in enumerate(alg_list):
-        this_regret = reg[idx, :]
+        this_regret = regret[idx, :]
         this_std = stds[idx, :]
         ax.plot(t_range, this_regret, label=alg["label"])
-        ax.fill_between(this_regret, this_regret - this_std, 
+        ax.fill_between(t_range, this_regret - this_std, 
                         this_regret + this_std, alpha=0.35)
+    plt.xlabel("t")
+    plt.ylabel("Regret")
     plt.legend()
     plt.show()
     
     # Save regret curve
     label_list = [alg["label"] for alg in alg_list]
     for name, array in zip(["regret", "stds"], [regret, stds]):
-        df = pd.DataFrame(array, columns=label_list)
+        df = pd.DataFrame(array.T, columns=label_list)
         df.index.name = "t"
         df.to_csv(path / (name + ".csv"))
     return ax
@@ -67,18 +69,15 @@ def compare_algs(n_episodes, n_iterations, alg_list, output_folder):
 
 #%% Sample Usage
 n_episodes = 10
-n_iterations = 1000
+n_iterations = 100
 
 # Running a single algorithm
-deep_fpl = run_mab_alg(n_episodes, n_iterations, DeepFPL, n_exp_rounds=10)
-reg, std = extract_regret(deep_fpl)
+#deep_fpl = run_mab_alg(n_episodes, n_iterations, DeepFPL, n_exp_rounds=10)
+#reg, std = extract_regret(deep_fpl)
 
 # Comparing multiple algorithms
 alg_list = [{"label": "DeepFPL",
-             "class": DeepFPL,
-             "n_exp_rounds": 10,
-             "hidden_layers": [64, 32]},
-            {"label": "AnotherAlg",
-             "class": SomeAlg,
-             "some_param": 7}]
+            "class": DeepFPL,
+            "n_exp_rounds": 10,
+            "hidden_layers": [64, 32]}]
 compare_algs(n_episodes, n_iterations, alg_list, "alg_testing")

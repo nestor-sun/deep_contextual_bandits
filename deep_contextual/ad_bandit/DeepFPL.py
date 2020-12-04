@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import tqdm
 
 from data_utils import concat_usrs_ads_ft
 
@@ -12,7 +13,7 @@ class FPLModel(nn.Module):
         model_layers = []
         for dim_in, dim_out in zip(layer_dims[:-1], layer_dims[1:]):
             model_layers.append(nn.Linear(dim_in, dim_out))
-            model_layers.append(nn.ReLU)
+            model_layers.append(nn.ReLU())
         # Get rid of last ReLU
         model_layers = model_layers[:-1]
         
@@ -36,8 +37,8 @@ class DeepFPL():
     # model_arch : model architecture (PyTorch class)
     #    
     def __init__(self, n_episodes, n_iterations, ad_feat, user_feat, ad_ratings,
-                 n_rounds_exp=28, a=1.5, train_batch_size=32, lr=1e-3,
-                 max_perturbation=2, hidden_layers=[]):
+                 n_exp_rounds=28, a=1.5, train_batch_size=32, lr=1e-3,
+                 max_perturbation=5, hidden_layers=[]):
         # Copy arguments as class properties
         vars = locals() # dict of local names
         self.__dict__.update(vars) # __dict__ holds and object's attributes
@@ -58,7 +59,7 @@ class DeepFPL():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Run an episode
-        for ep_idx in range(self.n_episodes):
+        for ep_idx in tqdm.tqdm(range(self.n_episodes)):
             # Placeholders for observations to be used for training
             inputs = np.zeros((self.n_iterations, self.n_feat_user_ad))
             rewards = np.zeros((self.n_iterations, 1))
@@ -82,32 +83,34 @@ class DeepFPL():
                     perturbation = np.random.randn(self.train_batch_size) ### REVISIT
                     perturbation = self.a*np.minimum(np.maximum(perturbation, 
                                     -self.max_perturbation), self.max_perturbation)
-                    rew_train = self.rewards[sample_idcs] + perturbation
+                    rew_train = rewards[sample_idcs] + perturbation
                     
                     # Train model
                     model.train()
-                    rew_pred = model(torch.as_tensor(inp_train, device=device))
-                    loss = criterion(rew_pred, torch.as_tensor(rew_train, device=device))
+                    rew_pred = model(
+                        torch.as_tensor(inp_train, device=device).float())
+                    loss = criterion(rew_pred,
+                                     torch.as_tensor(rew_train, device=device).float())
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
 
                 # Exploration phase
-                if t < self.n_rounds_exp or t < self.train_batch_size:
+                if t < self.n_exp_rounds or t < self.train_batch_size:
                     played_arm = np.random.randint(self.n_arms)
                 # Greedy phase
                 else:
                     model.eval()
                     rewards_pred = model(torch.as_tensor(
-                                        self.user_ad_feat[user_idx, :, :]), 
-                                        device=device)
+                                        self.user_ad_feat[user_idx, :, :], 
+                                        device=device).float())
                     played_arm = torch.argmax(rewards_pred, dim=0)
                 
                 # Play the arm and update the history
-                true_rating = self.ratings[user_idx, played_arm]
+                true_rating = self.ad_ratings[user_idx, played_arm]
                 reward = np.random.normal(loc=true_rating, scale=bandit_noise)
                 rewards[t] = reward
-                max_reward = self.ratings[user_idx, :].max()
+                max_reward = self.ad_ratings[user_idx, :].max()
                 self.regret_history[ep_idx, t] = max_reward - true_rating
                 inputs[t, :] = self.user_ad_feat[user_idx, played_arm, :]
                     
