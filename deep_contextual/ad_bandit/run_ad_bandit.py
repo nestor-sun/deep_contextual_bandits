@@ -1,4 +1,5 @@
 import DeepFPL
+import data_utils
 
 import matplotlib.pyplot as plt
 import pathlib
@@ -14,9 +15,9 @@ def extract_regret(mab_alg):
     
 # Instantiate MAB with given keyword args
 def run_mab_alg(n_episodes, n_iterations, mab_alg_class, **kwargs):
-    ad_feat = read_ad_features() # (n_ads x n_ad_features)
-    user_feat = read_user_features() # (n_users x n_user_features)
-    ad_ratings = read_ad_ratings() # (n_users x n_ads)
+    ad_feat = data_utils.read_ad_features(w_cats=False) # (n_ads x n_ad_features)
+    user_feat = data_utils.read_user_features() # (n_users x n_user_features)
+    ad_ratings = data_utils.read_ad_ratings() # (n_users x n_ads)
         
     # Run MAB
     mab_alg = mab_alg_class(n_episodes, n_iterations,
@@ -75,7 +76,8 @@ reg, std = extract_regret(deep_fpl)
 # Comparing multiple algorithms
 alg_list = [{"label": "DeepFPL",
              "class": DeepFPL,
-             "n_exp_rounds": 10},
+             "n_exp_rounds": 10,
+             "hidden_layers": [64, 32]},
             {"label": "AnotherAlg",
              "class": SomeAlg,
              "some_param": 7}]

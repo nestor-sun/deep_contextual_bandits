@@ -1,6 +1,27 @@
 import torch
+import torch.nn as nn
 import numpy as np
+
 from data_utils import concat_usrs_ads_ft
+
+# Generic perceptron model that uses ReLUs
+class FPLModel(nn.Module):
+    def __init__(self, layer_dims):
+        super(FPLModel, self).__init__()
+
+        model_layers = []
+        for dim_in, dim_out in zip(layer_dims[:-1], layer_dims[1:]):
+            model_layers.append(nn.Linear(dim_in, dim_out))
+            model_layers.append(nn.ReLU)
+        # Get rid of last ReLU
+        model_layers = model_layers[:-1]
+        
+        self.model = nn.Sequential(*model_layers)
+        
+    def forward(self, x):
+        out = self.model(x)
+        return out
+
 
 # Follow the perturbed leader
 class DeepFPL():
@@ -16,21 +37,24 @@ class DeepFPL():
     #    
     def __init__(self, n_episodes, n_iterations, ad_feat, user_feat, ad_ratings,
                  n_rounds_exp=28, a=1.5, train_batch_size=32, lr=1e-3,
-                 model_arch=None, max_perturbation=2):
+                 max_perturbation=2, hidden_layers=[]):
         # Copy arguments as class properties
         vars = locals() # dict of local names
         self.__dict__.update(vars) # __dict__ holds and object's attributes
         del self.__dict__["self"] # don't need `self`
         
         # Other useful properties
-        self.n_users, _ = user_feat.shape
-        self.n_arms, _ = ad_feat.shape
+        self.n_users, n_user_feat = user_feat.shape
+        self.n_arms, n_ad_feat = ad_feat.shape
         self.user_ad_feat = concat_usrs_ads_ft(user_feat, ad_feat)
         self.n_feat_user_ad = self.user_ad_feat.shape[2]
         self.regret_history = np.zeros((self.n_episodes, self.n_iterations))
         
+        self.layers = [n_user_feat+n_ad_feat] + hidden_layers + [1]
         
     def run(self):
+        bandit_noise = 1
+        
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Run an episode
@@ -40,7 +64,7 @@ class DeepFPL():
             rewards = np.zeros((self.n_iterations, 1))
             
             # Model initialization
-            model = self.model_arch()
+            model = FPLModel(self.layers)
             model.to(device)
             criterion = torch.nn.MSELoss(reduction='sum')
             optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
@@ -63,7 +87,7 @@ class DeepFPL():
                     # Train model
                     model.train()
                     rew_pred = model(torch.as_tensor(inp_train, device=device))
-                    loss = criterion(y_pred, torch.as_tensor(rew_train, device=device))
+                    loss = criterion(rew_pred, torch.as_tensor(rew_train, device=device))
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
@@ -75,16 +99,16 @@ class DeepFPL():
                 else:
                     model.eval()
                     rewards_pred = model(torch.as_tensor(
-                                        user_ad_feat[user_idx, :, :]), 
+                                        self.user_ad_feat[user_idx, :, :]), 
                                         device=device)
                     played_arm = torch.argmax(rewards_pred, dim=0)
                 
                 # Play the arm and update the history
                 true_rating = self.ratings[user_idx, played_arm]
-                reward = some_random_rew(true_rating) ### REVISIT
-                self.rewards[t] = reward
+                reward = np.random.normal(loc=true_rating, scale=bandit_noise)
+                rewards[t] = reward
                 max_reward = self.ratings[user_idx, :].max()
-                self.regret_history[ep_idx, t] = max_reward - true_rating ### REVISIT
+                self.regret_history[ep_idx, t] = max_reward - true_rating
                 inputs[t, :] = self.user_ad_feat[user_idx, played_arm, :]
                     
         # Cumulative regret
