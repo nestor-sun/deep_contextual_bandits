@@ -42,6 +42,7 @@ def load_array(filename, target_dim=None):
         reduced = pca.fit_transform(data)
         recons = pca.inverse_transform(reduced)
         recons_error = ((recons - data)**2).mean()
+        
         print("Reducing dimensionality for {}".format(filename))
         print("Going from {} to {}".format(orig_dim, target_dim))
         print("Reconstruction error: {}".format(recons_error))

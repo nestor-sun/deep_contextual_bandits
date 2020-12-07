@@ -37,7 +37,7 @@ class DeepFPL():
     # model_arch : model architecture (PyTorch class)
     #    
     def __init__(self, n_episodes, n_iterations, ad_feat, user_feat, ad_ratings,
-                 n_exp_rounds=28, a=1.5, train_batch_size=32, lr=1e-3,
+                 n_exp_rounds=28, a=1, train_batch_size=32, lr=1e-3,
                  max_perturbation=5, hidden_layers=[]):
         # Copy arguments as class properties
         vars = locals() # dict of local names
@@ -80,10 +80,10 @@ class DeepFPL():
                     # Pick a random sample of observations and add noise
                     sample_idcs = np.random.randint(t, size=self.train_batch_size)
                     inp_train = inputs[sample_idcs]
-                    perturbation = np.random.randn(self.train_batch_size) ### REVISIT
+                    perturbation = np.random.randn(self.train_batch_size)
                     perturbation = self.a*np.minimum(np.maximum(perturbation, 
                                     -self.max_perturbation), self.max_perturbation)
-                    rew_train = rewards[sample_idcs] + perturbation
+                    rew_train = rewards[sample_idcs] + perturbation.reshape((-1, 1))
                     
                     # Train model
                     model.train()

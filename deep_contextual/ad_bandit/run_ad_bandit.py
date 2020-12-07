@@ -14,9 +14,11 @@ def extract_regret(mab_alg):
     return avg_reg, std
     
 # Instantiate MAB with given keyword args
-def run_mab_alg(n_episodes, n_iterations, mab_alg_class, **kwargs):
-    ad_feat = data_utils.read_ad_features(w_cats=False) # (n_ads x n_ad_features)
-    user_feat = data_utils.read_user_features() # (n_users x n_user_features)
+# dim_ads: dimensionality of ads
+# dim_users: dimensionality of users
+def run_mab_alg(n_episodes, n_iterations, dim_ads, dim_users, mab_alg_class, **kwargs):
+    ad_feat = data_utils.read_ad_features(target_dim=dim_ads, w_cats=True) # (n_ads x n_ad_features)
+    user_feat = data_utils.read_user_features(target_dim=dim_users) # (n_users x n_user_features)
     ad_ratings = data_utils.read_ad_ratings() # (n_users x n_ads)
         
     # Run MAB
@@ -28,9 +30,9 @@ def run_mab_alg(n_episodes, n_iterations, mab_alg_class, **kwargs):
 
 # Batch run a series of algorithms to compare.
 # output_folder: folder to output results to
-def compare_algs(n_episodes, n_iterations, alg_list, output_folder):
+def compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, output_folder):
     path = pathlib.Path(output_folder)
-    path.mkdir(parents=True)
+    path.mkdir(parents=True, exist_ok=True)
     
     # Run algorithms
     n_algs = len(alg_list)
@@ -39,8 +41,8 @@ def compare_algs(n_episodes, n_iterations, alg_list, output_folder):
     for idx, alg in enumerate(alg_list):
         alg_params = {key: val for key, val in alg.items() 
                       if key not in ["label", "class"]}
-        mab_alg = run_mab_alg(n_episodes, n_iterations, alg["class"],
-                              **alg_params)
+        mab_alg = run_mab_alg(n_episodes, n_iterations, dim_ads, dim_users,
+                              alg["class"], **alg_params)
         regret[idx, :], stds[idx, :] = extract_regret(mab_alg)
 
     # Plot regret        
@@ -68,16 +70,21 @@ def compare_algs(n_episodes, n_iterations, alg_list, output_folder):
 
 
 #%% Sample Usage
-n_episodes = 10
-n_iterations = 100
+n_episodes = 2
+n_iterations = 10000
+dim_ads = 16
+dim_users = 40
 
 # Running a single algorithm
-#deep_fpl = run_mab_alg(n_episodes, n_iterations, DeepFPL, n_exp_rounds=10)
+#deep_fpl = run_mab_alg(n_episodes, n_iterations, dim_ads, dim_users, 
+#                   DeepFPL, n_exp_rounds=10)
 #reg, std = extract_regret(deep_fpl)
 
 # Comparing multiple algorithms
-alg_list = [{"label": "DeepFPL",
+alg_list = [{"label": "DeepFPL_a={}".format(a),
             "class": DeepFPL,
-            "n_exp_rounds": 10,
-            "hidden_layers": [64, 32]}]
-compare_algs(n_episodes, n_iterations, alg_list, "alg_testing")
+            "n_exp_rounds": 50,
+            "lr": 1e-3,
+            "a": a,
+            "hidden_layers": [40, 40]} for a in [0]]
+compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, "alg_testing")
