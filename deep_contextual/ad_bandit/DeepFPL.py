@@ -50,11 +50,12 @@ class DeepFPL():
         self.user_ad_feat = concat_usrs_ads_ft(user_feat, ad_feat)
         self.n_feat_user_ad = self.user_ad_feat.shape[2]
         self.regret_history = np.zeros((self.n_episodes, self.n_iterations))
+        self.reward_history = np.zeros((self.n_episodes, self.n_iterations))
         
         self.layers = [n_user_feat+n_ad_feat] + hidden_layers + [1]
         
     def run(self):
-        bandit_noise = 1
+        bandit_noise = 2
         
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
@@ -112,6 +113,7 @@ class DeepFPL():
                 rewards[t] = reward
                 max_reward = self.ad_ratings[user_idx, :].max()
                 self.regret_history[ep_idx, t] = max_reward - true_rating
+                self.reward_history[ep_idx, t] = reward
                 inputs[t, :] = self.user_ad_feat[user_idx, played_arm, :]
                     
         # Cumulative regret

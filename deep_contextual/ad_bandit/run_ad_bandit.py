@@ -7,11 +7,17 @@ import pandas as pd
 import numpy as np
 
 # Extract regret history
-def extract_regret(mab_alg):
+def extract_results(mab_alg):
     # mab_alg.regret_history # (n_episodes x n_iterations) (numpy array)
-    avg_reg = mab_alg.regret_history.mean(axis=0)
-    std = mab_alg.regret_history.std(axis=0)
-    return avg_reg, std
+    _, n_iterations = mab_alg.regret_history.shape
+    results = {"regret": {}, "avg_reward": {}}
+    results["regret"]["mean"] = mab_alg.regret_history.mean(axis=0)
+    results["regret"]["std"] = mab_alg.regret_history.std(axis=0)
+    avg_rew_all = mab_alg.reward_history.cumsum(axis=1) / np.arange(1, n_iterations+1)
+    results["avg_reward"]["mean"] = avg_rew_all.mean(axis=0)
+    results["avg_reward"]["std"] = avg_rew_all.std(axis=0)
+    
+    return results
     
 # Instantiate MAB with given keyword args
 # dim_ads: dimensionality of ads
@@ -34,43 +40,57 @@ def compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, output_
     path = pathlib.Path(output_folder)
     path.mkdir(parents=True, exist_ok=True)
     
-    # Run algorithms
+    # Initialize result placeholders
     n_algs = len(alg_list)
-    regret = np.zeros((n_algs, n_iterations))
-    stds = np.zeros((n_algs, n_iterations))
+    all_results = {"regret": {}, "avg_reward": {}}
+    for key in all_results.keys():
+        all_results[key]["mean"] = np.zeros((n_algs, n_iterations))
+        all_results[key]["std"] = np.zeros((n_algs, n_iterations))
+    # Run algorithms
+    
     for idx, alg in enumerate(alg_list):
         alg_params = {key: val for key, val in alg.items() 
                       if key not in ["label", "class"]}
         mab_alg = run_mab_alg(n_episodes, n_iterations, dim_ads, dim_users,
                               alg["class"], **alg_params)
-        regret[idx, :], stds[idx, :] = extract_regret(mab_alg)
+        new_results = extract_results(mab_alg)
+        for key in all_results.keys():
+            for field in all_results[key].keys():
+                all_results[key][field][idx, :] = new_results[key][field]
+        #regret[idx, :], stds[idx, :] = extract_regret(mab_alg)
 
-    # Plot regret        
-    fig, ax = plt.subplots()
-    t_range = range(n_iterations)
-    for idx, alg in enumerate(alg_list):
-        this_regret = regret[idx, :]
-        this_std = stds[idx, :]
-        ax.plot(t_range, this_regret, label=alg["label"])
-        ax.fill_between(t_range, this_regret - this_std, 
-                        this_regret + this_std, alpha=0.35)
-    plt.xlabel("t")
-    plt.ylabel("Regret")
-    plt.legend()
-    plt.show()
-    
-    # Save regret curve
-    label_list = [alg["label"] for alg in alg_list]
-    for name, array in zip(["regret", "stds"], [regret, stds]):
-        df = pd.DataFrame(array.T, columns=label_list)
-        df.index.name = "t"
-        df.to_csv(path / (name + ".csv"))
+    # Plot regret and reward
+    for key in all_results.keys():
+        fig, ax = plt.subplots()
+        t_range = range(n_iterations)
+        for idx, alg in enumerate(alg_list):
+            this_mean = all_results[key]["mean"][idx, :]
+            this_std = all_results[key]["std"][idx, :]
+            #this_regret = regret[idx, :]
+            #this_std = stds[idx, :]
+            ax.plot(t_range, this_mean, label=alg["label"])
+            ax.fill_between(t_range, this_mean - this_std, 
+                            this_mean + this_std, alpha=0.35)
+        plt.xlabel("t")
+        plt.ylabel(key.replace("_", " ").title())
+        plt.legend()
+        plt.show()
+        
+        # Save curve
+        label_list = [alg["label"] for alg in alg_list]
+        for field in all_results[key].keys():
+            df = pd.DataFrame(all_results[key][field].T, columns=label_list)
+            
+        #for name, array in zip(["regret", "stds"], [regret, stds]):
+        #    df = pd.DataFrame(array.T, columns=label_list)
+            df.index.name = "t"
+            df.to_csv(path / (field + ".csv"))
     return ax
 
 
 
 #%% Sample Usage
-n_episodes = 2
+n_episodes = 10
 n_iterations = 10000
 dim_ads = 16
 dim_users = 40
@@ -81,10 +101,10 @@ dim_users = 40
 #reg, std = extract_regret(deep_fpl)
 
 # Comparing multiple algorithms
-alg_list = [{"label": "DeepFPL_a={}".format(a),
+alg_list = [{"label": "DeepFPL a={}".format(a),
             "class": DeepFPL,
             "n_exp_rounds": 50,
             "lr": 1e-3,
             "a": a,
-            "hidden_layers": [40, 40]} for a in [0]]
+            "hidden_layers": [40, 40]} for a in [0, 1]]
 compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, "alg_testing")
