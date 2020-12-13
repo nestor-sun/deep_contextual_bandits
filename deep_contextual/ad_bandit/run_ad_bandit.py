@@ -66,8 +66,6 @@ def compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, output_
         for idx, alg in enumerate(alg_list):
             this_mean = all_results[key]["mean"][idx, :]
             this_std = all_results[key]["std"][idx, :]
-            #this_regret = regret[idx, :]
-            #this_std = stds[idx, :]
             ax.plot(t_range, this_mean, label=alg["label"])
             ax.fill_between(t_range, this_mean - this_std, 
                             this_mean + this_std, alpha=0.35)
@@ -80,9 +78,6 @@ def compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, output_
         label_list = [alg["label"] for alg in alg_list]
         for field in all_results[key].keys():
             df = pd.DataFrame(all_results[key][field].T, columns=label_list)
-            
-        #for name, array in zip(["regret", "stds"], [regret, stds]):
-        #    df = pd.DataFrame(array.T, columns=label_list)
             df.index.name = "t"
             df.to_csv(path / (field + ".csv"))
     return ax
@@ -101,10 +96,16 @@ dim_users = 40
 #reg, std = extract_regret(deep_fpl)
 
 # Comparing multiple algorithms
-alg_list = [{"label": "DeepFPL a={}".format(a),
-            "class": DeepFPL,
-            "n_exp_rounds": 50,
-            "lr": 1e-3,
-            "a": a,
-            "hidden_layers": [40, 40]} for a in [0, 1]]
-compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, "alg_testing")
+
+for bandit_noise in [0.1, 2, 4]:
+    alg_list = [{"label": "DeepFPL a={}".format(a),
+                "class": DeepFPL,
+                "n_exp_rounds": 50,
+                "lr": 1e-2,
+                "a": a,
+                "bandit_noise": bandit_noise,
+                "hidden_layers": [40, 40]} for a in [0, 2, 4]]
+    noise_str = str(bandit_noise).replace(".", "_")
+    folder_name = "bnoise_{}".format(noise_str)
+    compare_algs(n_episodes, n_iterations, dim_ads, dim_users, alg_list, folder_name)
+    plt.title("DeepFPL, bandit noise={}".format(bandit_noise))

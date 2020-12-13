@@ -37,7 +37,7 @@ class DeepFPL():
     # model_arch : model architecture (PyTorch class)
     #    
     def __init__(self, n_episodes, n_iterations, ad_feat, user_feat, ad_ratings,
-                 n_exp_rounds=28, a=1, train_batch_size=32, lr=1e-3,
+                 n_exp_rounds=28, a=1, bandit_noise=2, train_batch_size=32, lr=1e-3,
                  max_perturbation=5, hidden_layers=[]):
         # Copy arguments as class properties
         vars = locals() # dict of local names
@@ -55,7 +55,7 @@ class DeepFPL():
         self.layers = [n_user_feat+n_ad_feat] + hidden_layers + [1]
         
     def run(self):
-        bandit_noise = 2
+        #bandit_noise = 2
         
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
@@ -109,7 +109,7 @@ class DeepFPL():
                 
                 # Play the arm and update the history
                 true_rating = self.ad_ratings[user_idx, played_arm]
-                reward = np.random.normal(loc=true_rating, scale=bandit_noise)
+                reward = np.random.normal(loc=true_rating, scale=self.bandit_noise)
                 rewards[t] = reward
                 max_reward = self.ad_ratings[user_idx, :].max()
                 self.regret_history[ep_idx, t] = max_reward - true_rating
