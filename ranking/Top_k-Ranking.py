@@ -1,11 +1,9 @@
 
-from multiprocessing import Pool
-
-import matplotlib.pyplot as plt
-
-import numpy as np
-
 # Top k-Ranking 
+
+from multiprocessing import Pool
+import matplotlib.pyplot as plt
+import numpy as np
 
 class MAB:
     def __init__(self, arms_len, max_k, mode):
@@ -138,7 +136,7 @@ def test_model_reward_wrapper(args):
     MAB_method = MAB(arms,k,method)
     return test_model_reward(MAB_method,reward_noise,epochs)
 
-def test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample):
+def test_plot_reward(id,arms_range,reward_noise_range,epochs,k_range,stat_sample):
     for arms in arms_range:
         for reward_noise in reward_noise_range:
             for k in k_range:
@@ -149,7 +147,7 @@ def test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample):
                     for j in range(stat_sample):
                         parallel_args.append([arms,k,method,reward_noise,epochs])
 
-                    with Pool(15) as p:
+                    with Pool(16) as p:
                         reward_method_wrapper = list(p.map(test_model_reward_wrapper, iter(parallel_args)))
                     
                     for j in range(stat_sample):
@@ -166,12 +164,13 @@ def test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample):
                             'epsilon_greedy 0.5'.replace('_',' '),
                             'epsilon_greedy 0.9'.replace('_',' '),
                             'random','ucb','ucb2','optimal'])
-                plt.savefig('reward,k='+str(k)+',arms='+str(arms)+',noise='+str(reward_noise)+'.png')
+                plt.savefig(str(id)+'reward,k='+str(k)+',arms='+str(arms)+',noise='+str(reward_noise)+'.png')
                 plt.clf()
                 # plt.show()
 
 if __name__ == '__main__':
 
+    id = 1
 
     arms_range = [10]
     reward_noise_range = [1/2]
@@ -179,34 +178,38 @@ if __name__ == '__main__':
     k_range_max = 6
     k_range = range(1,k_range_max+1)
     stat_sample = 50
-    test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample)
+    test_plot_reward(id,arms_range,reward_noise_range,epochs,k_range,stat_sample)
 
+    id = id + 1
     arms_range = [6]
     reward_noise_range = [1/2]
     epochs = 100
     k_range_max = 6
     k_range = range(1,k_range_max+1)
     stat_sample = 50
-    test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample)
+    test_plot_reward(id,arms_range,reward_noise_range,epochs,k_range,stat_sample)
 
+    id = id + 1
     arms_range = [20]
     reward_noise_range = [1/2]
     epochs = 100
     k_range_max = 6
     k_range = range(1,k_range_max+1)
     stat_sample = 50
-    test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample)
+    test_plot_reward(id,arms_range,reward_noise_range,epochs,k_range,stat_sample)
 
+    id = id + 1
     arms_range = [6, 10,15,25,50,100]
     reward_noise_range = [1/2]
     epochs = 100
     k_range = [3]
     stat_sample = 50
-    test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample)
+    test_plot_reward(id,arms_range,reward_noise_range,epochs,k_range,stat_sample)
 
+    id = id + 1
     arms_range = [10]
-    reward_noise_range = [.01, .1, .5, 1, 10, 100]
-    epochs = 100
+    reward_noise_range = [1,2,3,4,5,6,7,8,9,10]
+    epochs = 200
     k_range = [3]
     stat_sample = 50
-    test_plot_reward(arms_range,reward_noise_range,epochs,k_range,stat_sample)
+    test_plot_reward(id,arms_range,reward_noise_range,epochs,k_range,stat_sample)
