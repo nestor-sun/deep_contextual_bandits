@@ -8,6 +8,12 @@ import json
 
 
 
+
+
+
+
+
+
 resnet = models.resnet34(pretrained = True)
 
 for para in resnet.parameters():
